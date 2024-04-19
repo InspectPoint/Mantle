@@ -324,8 +324,22 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 
 					BOOL success = YES;
 					value = [errorHandlingTransformer transformedValue:value success:&success error:error];
-
-					if (!success) return nil;
+					
+					if (!success) {
+						NSString *userInfoFailedKey = @"failedKey";
+						NSError *originalError = *error;
+						if(originalError.userInfo){
+							NSMutableDictionary *resultInfo = [NSMutableDictionary dictionaryWithDictionary:originalError.userInfo];
+							if (!originalError.userInfo[userInfoFailedKey]){
+								NSDictionary *userInfo = @{
+									userInfoFailedKey: [NSString stringWithFormat:@"Caught exception parsing JSON key path \"%@\" for model class: %@", JSONKeyPaths, self.modelClass],
+								};
+								[resultInfo addEntriesFromDictionary:userInfo];
+								*error = [NSError errorWithDomain:MTLJSONAdapterErrorDomain code:MTLJSONAdapterErrorExceptionThrown userInfo:resultInfo];
+							}
+						}
+						return nil;
+					}
 				} else {
 					value = [transformer transformedValue:value];
 				}
